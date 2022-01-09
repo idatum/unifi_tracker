@@ -2,13 +2,13 @@ MQTT Unifi AP device tracker
 -
 I have Ubiquiti AP devices in my home network. Previously I used Home Assistant's (HA) Unifi Direct for wifi client device tracking for presence detection.
 
-I now use HA's MQTT device tracker to replace the unifi_direct integration. From looking at the HA github, improvements seem to be stalled on separating Unifi specific functionality. Also, I'm never really comfortable with secrets.yaml having a password with essentially full access to my router and APs -- HA has generous enough privilege on my network already.
+I now use HA's MQTT device tracker to replace the unifi_direct integration. From looking at the HA github for the unifi_direct component, improvements seem to be stalled on separating Unifi specific functionality. Also, I'm never really comfortable with secrets.yaml having a password with essentially full access to my router and APs -- I prefer SSH key auth whenever possible.
 
-These and other points motivated me to create a seperate Docker container service. Much of the functionality was inspired (stolen) from the existing unifi_direct integration, which generally works fine:
+These and other points motivated me to create a seperate Docker container service using MQTT to post AP client connects/disconnects. Much of the functionality was inspired (stolen) from the existing unifi_direct integration, which generally still works fine:
 
 https://github.com/home-assistant/core/tree/dev/homeassistant/components/unifi_direct
 
-In short: I wanted another option, one in which I have full control, seperate from HA components, other than the MQTT service which I use extensively anyway.
+In short: I wanted another option, an MQTT option in which I have full control, seperate from HA components other than the MQTT service which I use extensively anyway.
 
 It is a simple service:
 - 

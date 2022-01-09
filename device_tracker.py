@@ -19,10 +19,13 @@ Mqtt_host = "mosquitto"
 Mqtt_port = 1883
 Mqtt_client = mqtt.Client(clean_session=True)
 Mqtt_qos = 1
+Mqtt_username = os.environ['MQTT_USERNAME']
+Mqtt_password = os.environ['MQTT_PASSWORD']
 
 AP_hosts = []
 Scan_delay_secs = 15
-Snapshot_loop_count = int(round(60 * 60 / Scan_delay_secs, 0))
+# Reload retained messages and do a full snapshot of clients periodically (ideally every day).
+Snapshot_loop_count = int(round(24 * 60 * 60 / Scan_delay_secs, 0))
 
 
 # Publish state to MQTT and retain.
@@ -61,7 +64,7 @@ def get_retained_messages():
     subscribe.callback(callback=on_retained_message, userdata=Retained_queue,
          topics=f"{Topic_base}/+",
          qos=Mqtt_qos, hostname=Mqtt_host, port=Mqtt_port, tls=None,
-         auth={"username":os.environ['MQTT_USERNAME'], "password": os.environ['MQTT_PASSWORD']})
+         auth={"username":Mqtt_username, "password": Mqtt_password})
 
 
 # Retrieve persisted MQTT topics for existing client MACs
@@ -137,7 +140,10 @@ if __name__ == '__main__':
     ap.add_argument("--hostlist", type=str, required=True, action='store', help="List of access point IP addresses.")
     ap.add_argument("--mqtthost", type=str, required=False, action='store', default=Mqtt_host, help="MQTT host.")
     ap.add_argument("--unifiuser", type=str, required=False, action='store', default=unifi.SSH_USERNAME, help="Unifi username.")
-    ap.add_argument("--topic", type=str, required=False, action='store', default=Topic_base, help="MQTT topic")
+    ap.add_argument("--topic", type=str, required=False, action='store', default=Topic_base, help="MQTT topic.")
+    ap.add_argument("--delay", type=int, required=False, action='store', default=Scan_delay_secs, \
+                               choices=range(1,61), metavar="{1..61}", help="Loop delay seconds.")
+
     args = ap.parse_args()
     logging.basicConfig(level=logging.DEBUG if args.debug else logging.INFO if args.info \
                         else logging.ERROR if args.error else logging.WARNING,
@@ -147,6 +153,7 @@ if __name__ == '__main__':
     Mqtt_host = args.mqtthost
     Topic_base = args.topic
     unifi.SSH_USERNAME = args.unifiuser
-    
+    Scan_delay_secs = args.delay
+
     Log.debug(AP_hosts)
     main()
