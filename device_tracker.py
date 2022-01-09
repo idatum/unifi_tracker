@@ -96,7 +96,7 @@ def get_existing_clients():
 # Perform diff between existing clients and last retrieved clients; publish to MQTT.
 # To indicate present state, publish topic and retain with 'home' payload;
 # for away state, publish topic and retain with empty payload, which per MQTT, deletes.
-# If using Home Assistant MQTT device tracker, consider_home setting will be honered.
+# If using Home Assistant MQTT device tracker, consider_home setting will be honored.
 def process(last_clients):
     for i in range(Snapshot_loop_count):
         try:

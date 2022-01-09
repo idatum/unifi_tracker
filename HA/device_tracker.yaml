@@ -1,0 +1,6 @@
+- platform: mqtt
+  consider_home: 60
+  devices:
+    tracked_phone: "device_tracker/unifi_tracker/xx:xx:xx:xx:xx:xx"
+  qos: 1
+  source_type: router
