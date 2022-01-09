@@ -4,7 +4,7 @@ I have Ubiquiti AP devices in my home network. Previously I used Home Assistant'
 
 I now use HA's MQTT device tracker to replace the unifi_direct integration. From looking at the HA github, improvements seem to be stalled on separating Unifi specific functionality. Also, I'm never really comfortable with secrets.yaml having a password with essentially full access to my router and APs -- HA has generous enough privilege on my network already.
 
-These and other points motivated me to create a seperate Docker container. Much of the functionality was inspired (stolen) from the existing unifi_direct integration, which generally works fine:
+These and other points motivated me to create a seperate Docker container service. Much of the functionality was inspired (stolen) from the existing unifi_direct integration, which generally works fine:
 
 https://github.com/home-assistant/core/tree/dev/homeassistant/components/unifi_direct
 
@@ -12,7 +12,7 @@ In short: I wanted another option, one in which I have full control, seperate fr
 
 It is a simple service:
 - 
-1. Use SSH to remotely and periodically call a utility, ```mca-dump```, on HA APs that returns JSON with client MACs; use SSH key auth.
+1. Use SSH to remotely and periodically call a utility, ```mca-dump```, on Ubiquiti APs that returns JSON with client MACs; use SSH key auth.
 2. Union all client MACs from all APs.
 3. Do a diff between the previous and current set of MAC addresses.
 4. Publish diff to MQTT (Mosquitto) for processing in HA using the MQTT service.
