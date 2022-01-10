@@ -4,7 +4,7 @@ I have Ubiquiti AP devices in my home network. Previously I used Home Assistant'
 
 I now use HA's MQTT device tracker to replace the unifi_direct integration. From looking at the HA github for the unifi_direct component, improvements seem to be stalled on separating Unifi specific functionality. Also, I'm never really comfortable with secrets.yaml having a password with essentially full access to my router and APs -- I prefer SSH key auth whenever possible.
 
-These and other points motivated me to create a seperate Docker container service using MQTT to post AP client connects/disconnects. Much of the functionality was inspired (stolen) from the existing unifi_direct integration, which generally still works fine:
+These and other points motivated me to create a seperate Docker container service using MQTT to post AP client connects/disconnects. Much of the functionality to interact with the AP was inspired from the existing unifi_direct integration, which generally still works fine:
 
 https://github.com/home-assistant/core/tree/dev/homeassistant/components/unifi_direct
 
@@ -41,4 +41,10 @@ I retain MQTT messages so HA can restart and pick up current presence state. The
 
 If any one AP fails to return output from ```mca-dump```, the entire diff will fail. I only have a couple APs, but if you have many, the probability of failing to do a diff increases. I get 1 or 2 failures per hour from any of the my APs (it simply doesn't return any results -- no clue why).
 
-Works fine generally, basically like the existing unifi_direct, and is one less external dependency for running HA for my home automation.
+There are 2 environment variables for MQTT credentials:
+```
+MQTT_USERNAME
+MQTT_PASSWORD
+```  
+
+Works fine generally, basically like the existing unifi_direct, and is one less dependenct component for running HA for my home automation.
