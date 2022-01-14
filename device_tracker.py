@@ -4,11 +4,12 @@ import argparse
 import logging
 import paho.mqtt.client as mqtt
 import paho.mqtt.subscribe as subscribe
+import ssl
 from multiprocessing import Queue
 from multiprocessing import Process
 import unifi_tracker as unifi
 
-Log = logging.getLogger("unifi_tracker")
+Logger_name = "device_tracker"
 
 Retained_maxcount = 100
 Retained_timeout = 1
@@ -17,15 +18,17 @@ Topic_base = 'device_tracker/unifi_tracker'
 
 Mqtt_host = "mosquitto"
 Mqtt_port = 1883
+Mqtt_tls_set = None
 Mqtt_client = mqtt.Client(clean_session=True)
 Mqtt_qos = 1
 Mqtt_username = os.environ['MQTT_USERNAME']
 Mqtt_password = os.environ['MQTT_PASSWORD']
 
+Log = logging.getLogger(Logger_name)
 AP_hosts = []
 Scan_delay_secs = 15
 # Reload retained messages and do a full snapshot of clients periodically (ideally every day).
-Snapshot_loop_count = int(round(24 * 60 * 60 / Scan_delay_secs, 0))
+Snapshot_loop_count = int(round(24 * 60 * (60 / Scan_delay_secs), 0))
 
 
 # Publish state to MQTT and retain.
@@ -40,6 +43,8 @@ def publish_state(topic: str, state: str, retain: bool=True):
 # Connect to MQTT host
 def mqtt_connect():
     Mqtt_client.username_pw_set(username=os.environ['MQTT_USERNAME'], password=os.environ['MQTT_PASSWORD'])
+    if Mqtt_tls_set:
+        Mqtt_client.tls_set()
     Mqtt_client.connect(host=Mqtt_host, port=Mqtt_port)
     Mqtt_client.loop_start()
 
@@ -63,7 +68,7 @@ def get_retained_messages():
     Log.debug('Started get retrained messages process')
     subscribe.callback(callback=on_retained_message, userdata=Retained_queue,
          topics=f"{Topic_base}/+",
-         qos=Mqtt_qos, hostname=Mqtt_host, port=Mqtt_port, tls=None,
+         qos=Mqtt_qos, hostname=Mqtt_host, port=Mqtt_port, tls=Mqtt_tls_set,
          auth={"username":Mqtt_username, "password": Mqtt_password})
 
 
@@ -137,9 +142,11 @@ if __name__ == '__main__':
     ap_log.add_argument("--info", required=False, action='store_true', default=False, help="Enable info level logging.")
     ap_log.add_argument("--warning", required=False, action='store_true', default=False, help="Enable warning level logging.")
     ap_log.add_argument("--error", required=False, action='store_true', default=False, help="Enable error level logging.")
+    ap.add_argument("--loggername", type=str, required=False, action='store', default=Logger_name, help="Logger name.")
     ap.add_argument("--hostlist", type=str, required=True, action='store', help="List of access point IP addresses.")
     ap.add_argument("--mqtthost", type=str, required=False, action='store', default=Mqtt_host, help="MQTT host.")
-    ap.add_argument("--unifiuser", type=str, required=False, action='store', default=unifi.SSH_USERNAME, help="Unifi username.")
+    ap.add_argument("--mqttport", type=int, required=False, action='store', default=Mqtt_port, help="MQTT port.")
+    ap.add_argument("--mqtts", required=False, action='store_true', default=Mqtt_tls_set, help="Use MQTT TLS.")
     ap.add_argument("--topic", type=str, required=False, action='store', default=Topic_base, help="MQTT topic.")
     ap.add_argument("--delay", type=int, required=False, action='store', default=Scan_delay_secs, \
                                choices=range(1,61), metavar="{1..61}", help="Loop delay seconds.")
@@ -149,11 +156,16 @@ if __name__ == '__main__':
                         else logging.ERROR if args.error else logging.WARNING,
                         format='%(asctime)s %(levelname)s:%(name)s:%(message)s',
                         datefmt='%m-%d-%Y %H:%M:%S')
+    if args.loggername != Logger_name:
+        Logger_name = args.loggername
+        Log = logging.getLogger(Logger_name)
+        unifi._LOGGER = Log
     AP_hosts = args.hostlist.split(',')
+    Log.debug(AP_hosts)
     Mqtt_host = args.mqtthost
+    Mqtt_port = args.mqttport
+    Mqtt_tls_set = {} if args.mqtts else None
     Topic_base = args.topic
-    unifi.SSH_USERNAME = args.unifiuser
     Scan_delay_secs = args.delay
 
-    Log.debug(AP_hosts)
     main()
