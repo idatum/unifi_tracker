@@ -24,6 +24,8 @@ Mqtt_qos = 1
 Mqtt_username = os.environ['MQTT_USERNAME']
 Mqtt_password = os.environ['MQTT_PASSWORD']
 
+Unifi_ssh_username = os.environ['UNIFI_SSH_USERNAME']
+
 Log = logging.getLogger(Logger_name)
 AP_hosts = []
 Scan_delay_secs = 15
@@ -43,7 +45,8 @@ def publish_state(topic: str, state: str, retain: bool=True):
 # Connect to MQTT host
 def mqtt_connect():
     Mqtt_client.username_pw_set(username=os.environ['MQTT_USERNAME'], password=os.environ['MQTT_PASSWORD'])
-    if Mqtt_tls_set:
+    if Mqtt_tls_set is not None:
+        Log.debug('Using TLS')
         Mqtt_client.tls_set()
     Mqtt_client.connect(host=Mqtt_host, port=Mqtt_port)
     Mqtt_client.loop_start()
@@ -108,7 +111,7 @@ def get_existing_clients():
 def process(last_clients):
     for i in range(Snapshot_loop_count):
         try:
-            last_clients, added, deleted = unifi.scan_aps(ap_hosts=AP_hosts, last_mac_clients=last_clients)
+            last_clients, added, deleted = unifi.scan_aps(ssh_username=Unifi_ssh_username, ap_hosts=AP_hosts, last_mac_clients=last_clients)
             for mac in added:
                 publish_state(f'{Topic_base}/{mac}', 'home', True)
             for mac in deleted:
@@ -146,7 +149,7 @@ if __name__ == '__main__':
     ap.add_argument("--hostlist", type=str, required=True, action='store', help="List of access point IP addresses.")
     ap.add_argument("--mqtthost", type=str, required=False, action='store', default=Mqtt_host, help="MQTT host.")
     ap.add_argument("--mqttport", type=int, required=False, action='store', default=Mqtt_port, help="MQTT port.")
-    ap.add_argument("--mqtts", required=False, action='store_true', default=Mqtt_tls_set, help="Use MQTT TLS.")
+    ap.add_argument("--mqtts", required=False, action='store_true', default=False, help="Use MQTT TLS.")
     ap.add_argument("--topic", type=str, required=False, action='store', default=Topic_base, help="MQTT topic.")
     ap.add_argument("--delay", type=int, required=False, action='store', default=Scan_delay_secs, \
                                choices=range(1,61), metavar="{1..61}", help="Loop delay seconds.")

@@ -1,6 +1,6 @@
 import unittest
 import json
-import app.unifi_tracker as unifi
+import unifi_tracker as unifi
 
 TEST_RESULT_PROLOG = b'{"vap_table": [{"sta_table": '
 TEST_RESULT_EPILOG = b'}]}'
