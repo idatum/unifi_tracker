@@ -17,9 +17,9 @@ It is a simple service:
 3. Do a diff between the previous and current set of MAC addresses.
 4. Publish diff to MQTT (Mosquitto) for processing in HA using the MQTT service.
 
-A couple key notes:
+A few key notes:
 -
-MQTT messages are retained so HA can restart and pick up current presence state. The topic has the MAC address, and the payload is "home". Here is an example HA device_tracker.yaml (included in configuraiton.yaml):
+MQTT messages are retained so HA can restart and pick up current presence state. The topic has the MAC address, and the payload is "home". Here is an example HA device_tracker.yaml (included in configuration.yaml):
 ```
 - platform: mqtt
   consider_home: 60
