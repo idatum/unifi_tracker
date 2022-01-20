@@ -44,7 +44,8 @@ def publish_state(topic: str, state: str, retain: bool=True):
 
 # Connect to MQTT host
 def mqtt_connect():
-    Mqtt_client.username_pw_set(username=os.environ['MQTT_USERNAME'], password=os.environ['MQTT_PASSWORD'])
+    if Mqtt_username is not None:
+        Mqtt_client.username_pw_set(username=os.environ['MQTT_USERNAME'], password=os.environ['MQTT_PASSWORD'])
     if Mqtt_tls_set is not None:
         Log.debug('Using TLS')
         Mqtt_client.tls_set()

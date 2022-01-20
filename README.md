@@ -10,9 +10,15 @@ https://github.com/home-assistant/core/tree/dev/homeassistant/components/unifi_d
 
 In short: I wanted another option to track WiFi clients, an MQTT option in which I have full control, seperate from HA components other than the MQTT service which I use extensively anyway.
 
-It is a simple service:
+Module
+-
+The module ```unifi_tracker``` has the functionality to query each AP using SSH by remotely executing a Unifi utility ```mca-dump```. Only SSH key auth is supported.
+
+Example application:
 - 
-1. Use SSH to remotely and periodically call a utility, ```mca-dump```, on Ubiquiti APs that returns JSON with client MACs; use SSH key auth.
+https://github.com/idatum/unifi_tracker/blob/main/app/device_tracker.py provides an example intended for use with HA. It's a simple service using ```unifi_tracker```:
+
+1. Periodically return client info from all APs.
 2. Union all client MACs from all APs.
 3. Do a diff between the previous and current set of MAC addresses.
 4. Publish diff to MQTT (Mosquitto) for processing in HA using the MQTT service.
@@ -53,8 +59,8 @@ The Unifi AP SSH username (using SSH key auth) is also an environment variable:
 UNIFI_SSH_USERNAME
 ```
 
-```device_tracker.py``` is the main processing and handles MQTT, ```unifi_tracker.py``` handles SSH and client diff with APs.
+In summary: ```device_tracker.py``` drives the main processing and handles MQTT, ```unifi_tracker.py``` handles SSH and client diff with APs.
 
 Summary
 -
-Works fine generally, basically like the existing unifi_direct, and allows me to more freely innovate and be less dependent on another component for running HA for my home automation.
+Works fine generally, basically like the existing HA unifi_direct, and allows me to more freely innovate and be less dependent on another component for running HA for my home automation.
