@@ -14,6 +14,9 @@ Module
 -
 The module ```unifi_tracker``` has the functionality to query each AP using SSH by remotely executing a Unifi utility ```mca-dump```. Only SSH key auth is supported.
 
+Python Package Index:
+https://pypi.org/project/unifi-tracker/
+
 Example application:
 - 
 https://github.com/idatum/unifi_tracker/blob/main/app/device_tracker.py provides an example intended for use with HA. It's a simple service using ```unifi_tracker```:
