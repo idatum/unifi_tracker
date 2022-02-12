@@ -24,20 +24,23 @@ def mock3_exec_ssh_cmdline(user: str=None, host: str=None, cmdline: str=None):
 class TestDiff(unittest.TestCase):
 
     def test_simple_parse(self):
-        unifi.unifi_tracker.exec_ssh_cmdline = mock1_exec_ssh_cmdline
-        test_clients = unifi.get_ap_clients('user', 'testhost')
+        unifiTracker = unifi.UnifiTracker()
+        unifiTracker.exec_ssh_cmdline = mock1_exec_ssh_cmdline
+        test_clients = unifiTracker.get_ap_clients('user', 'testhost')
         assert(TEST_CLIENTS1.decode('utf-8') == json.dumps(test_clients))
 
     def test_diff1(self):
-        unifi.unifi_tracker.exec_ssh_cmdline = mock2_exec_ssh_cmdline
-        diff = unifi.scan_aps('user', ['testhost'], json.loads((TEST_RESULT_PROLOG + TEST_CLIENTS1 + TEST_RESULT_EPILOG)))
+        unifiTracker = unifi.UnifiTracker()
+        unifiTracker.exec_ssh_cmdline = mock2_exec_ssh_cmdline
+        diff = unifiTracker.scan_aps('user', ['testhost'], json.loads((TEST_RESULT_PROLOG + TEST_CLIENTS1 + TEST_RESULT_EPILOG)))
         # Should be deterministic diff
         assert("({'MAC1': {'mac': 'mac1', 'hostname': 'hostname1'}, 'MAC3': {'mac': 'mac3', 'hostname': 'hostname3'}}, ['MAC1', 'MAC3'], ['vap_table'])" == \
                str(diff))
 
     def test_diff2(self):
-        unifi.unifi_tracker.exec_ssh_cmdline = mock3_exec_ssh_cmdline
-        diff = unifi.scan_aps('user', ['testhost'], json.loads((TEST_RESULT_PROLOG + TEST_CLIENTS1 + TEST_RESULT_EPILOG)))
+        unifiTracker = unifi.UnifiTracker()
+        unifiTracker.exec_ssh_cmdline = mock3_exec_ssh_cmdline
+        diff = unifiTracker.scan_aps('user', ['testhost'], json.loads((TEST_RESULT_PROLOG + TEST_CLIENTS1 + TEST_RESULT_EPILOG)))
         # Should be deterministic diff
         assert("({'MAC3': {'mac': 'mac3', 'hostname': 'hostname3'}, 'MAC1': {'mac': 'mac1', 'hostname': 'hostname1'}}, ['MAC3', 'MAC1'], ['vap_table'])" == \
                str(diff))

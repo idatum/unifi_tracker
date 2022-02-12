@@ -110,9 +110,10 @@ def get_existing_clients():
 # for away state, publish topic and retain with empty payload, which per MQTT, deletes.
 # If using Home Assistant MQTT device tracker, consider_home setting will be honored.
 def process(last_clients):
+    unifiTracker = unifi.UnifiTracker()
     for i in range(Snapshot_loop_count):
         try:
-            last_clients, added, deleted = unifi.scan_aps(ssh_username=Unifi_ssh_username, ap_hosts=AP_hosts, last_mac_clients=last_clients)
+            last_clients, added, deleted = unifiTracker.scan_aps(ssh_username=Unifi_ssh_username, ap_hosts=AP_hosts, last_mac_clients=last_clients)
             for mac in added:
                 publish_state(f'{Topic_base}/{mac}', 'home', True)
             for mac in deleted:

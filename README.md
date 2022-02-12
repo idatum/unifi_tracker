@@ -36,7 +36,7 @@ MQTT messages are retained so HA can restart and pick up current presence state.
   ```
   Note ```consider_home```: to have HA correctly honor that setting, deleting the retained message is required instead of publishing "not_home" in the payload. To delete a retained MQTT message, you publish a retained topic with no payload. Here's the code in ```device_tracker.py```:
   ```
-              last_clients, added, deleted = unifi.scan_aps(ap_hosts=AP_hosts, last_mac_clients=last_clients)
+              last_clients, added, deleted = unifiTracker.scan_aps(ap_hosts=AP_hosts, last_mac_clients=last_clients)
             for mac in added:
                 publish_state(topic=f'{Topic_base}/{mac}', state='home', retain=True)
             for mac in deleted:
