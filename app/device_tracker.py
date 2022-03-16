@@ -25,6 +25,7 @@ Mqtt_username = os.environ['MQTT_USERNAME']
 Mqtt_password = os.environ['MQTT_PASSWORD']
 
 Unifi_ssh_username = os.environ['UNIFI_SSH_USERNAME']
+UseHostKeysFile = False
 
 Log = logging.getLogger(Logger_name)
 AP_hosts = []
@@ -36,7 +37,10 @@ Snapshot_loop_count = int(round(24 * 60 * (60 / Scan_delay_secs), 0))
 # Publish state to MQTT and retain.
 def publish_state(topic: str, state: str, retain: bool=True):
     try:
-        info = Mqtt_client.publish(topic=topic, payload=state, qos=Mqtt_qos, retain=retain)
+        info = Mqtt_client.publish(topic=topic,
+                                   payload=state,
+                                   qos=Mqtt_qos,
+                                   retain=retain)
         Log.debug(f"Published {topic}: {info}")
     except Exception as e:
         Log.exception(e)
@@ -45,7 +49,8 @@ def publish_state(topic: str, state: str, retain: bool=True):
 # Connect to MQTT host
 def mqtt_connect():
     if Mqtt_username is not None:
-        Mqtt_client.username_pw_set(username=os.environ['MQTT_USERNAME'], password=os.environ['MQTT_PASSWORD'])
+        Mqtt_client.username_pw_set(username=os.environ['MQTT_USERNAME'],
+                                    password=os.environ['MQTT_PASSWORD'])
     if Mqtt_tls_set is not None:
         Log.debug('Using TLS')
         Mqtt_client.tls_set()
@@ -70,10 +75,15 @@ def on_retained_message(client, queue, message):
 # Fill queue with topics in callback.
 def get_retained_messages():
     Log.debug('Started get retrained messages process')
-    subscribe.callback(callback=on_retained_message, userdata=Retained_queue,
-         topics=f"{Topic_base}/+",
-         qos=Mqtt_qos, hostname=Mqtt_host, port=Mqtt_port, tls=Mqtt_tls_set,
-         auth={"username":Mqtt_username, "password": Mqtt_password})
+    subscribe.callback(callback=on_retained_message,
+                       userdata=Retained_queue,
+                       topics=f"{Topic_base}/+",
+                       qos=Mqtt_qos,
+                       hostname=Mqtt_host,
+                       port=Mqtt_port,
+                       tls=Mqtt_tls_set,
+                       auth={"username":Mqtt_username,
+                             "password": Mqtt_password})
 
 
 # Retrieve persisted MQTT topics for existing client MACs
@@ -110,10 +120,12 @@ def get_existing_clients():
 # for away state, publish topic and retain with empty payload, which per MQTT, deletes.
 # If using Home Assistant MQTT device tracker, consider_home setting will be honored.
 def process(last_clients):
-    unifiTracker = unifi.UnifiTracker()
+    unifiTracker = unifi.UnifiTracker(useHostKeys=UseHostKeysFile)
     for i in range(Snapshot_loop_count):
         try:
-            last_clients, added, deleted = unifiTracker.scan_aps(ssh_username=Unifi_ssh_username, ap_hosts=AP_hosts, last_mac_clients=last_clients)
+            last_clients, added, deleted = unifiTracker.scan_aps(ssh_username=Unifi_ssh_username,
+                                                                 ap_hosts=AP_hosts,
+                                                                 last_mac_clients=last_clients)
             for mac in added:
                 publish_state(f'{Topic_base}/{mac}', 'home', True)
             for mac in deleted:
@@ -149,6 +161,7 @@ if __name__ == '__main__':
     ap_log.add_argument("--error", required=False, action='store_true', default=False, help="Enable error level logging.")
     ap.add_argument("--loggername", type=str, required=False, action='store', default=Logger_name, help="Logger name.")
     ap.add_argument("--hostlist", type=str, required=True, action='store', help="List of access point IP addresses.")
+    ap.add_argument("--usehostkeys", required=False, action='store_true', default=UseHostKeysFile, help="Use known_hosts file.")
     ap.add_argument("--mqtthost", type=str, required=False, action='store', default=Mqtt_host, help="MQTT host.")
     ap.add_argument("--mqttport", type=int, required=False, action='store', default=Mqtt_port, help="MQTT port.")
     ap.add_argument("--mqtts", required=False, action='store_true', default=False, help="Use MQTT TLS.")
@@ -166,6 +179,7 @@ if __name__ == '__main__':
         Log = logging.getLogger(Logger_name)
         unifi._LOGGER = Log
     AP_hosts = args.hostlist.split(',')
+    UseHostKeysFile = args.usehostkeys
     Log.debug(AP_hosts)
     Mqtt_host = args.mqtthost
     Mqtt_port = args.mqttport

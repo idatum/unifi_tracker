@@ -12,10 +12,10 @@ class UnifiTrackerException(Exception):
         super().__init__(message)
 
 class UnifiTracker():
-    def __init__(self):
+    def __init__(self, useHostKeys=False):
         # SSH client ignoring existing host key.
         self.ssh_client = SSHClient()
-        self.ssh_client.set_missing_host_key_policy(WarningPolicy)
+        self._useHostKeys = useHostKeys
         # Unifi command to remotely call via SSH.
         self.UNIFI_CMDLINE = 'mca-dump'
         # Properties to extract from returned JSON.
@@ -24,9 +24,22 @@ class UnifiTracker():
         # Some reasonable limit to number of hosts to scan in parallel.
         self.MAX_AP_HOST_SCANS = 32
 
+    @property
+    def UseHostKeys(self):
+        return self._useHostKeys
+
+    @UseHostKeys.setter
+    def UseHostKeys(self, value):
+        self._useHostKeys = value
+
     def exec_ssh_cmdline(self, user: str, host: str, cmdline: str):
         '''Remotely execute command via SSH'''
         try:
+            if self._useHostKeys:
+                _LOGGER.debug("Using system host keys file.")
+                self.ssh_client.load_system_host_keys()
+            else:
+                self.ssh_client.set_missing_host_key_policy(WarningPolicy)
             self.ssh_client.connect(hostname=host, username=user, look_for_keys=True)
             _, stdout, stderr = self.ssh_client.exec_command(cmdline)
             out = stdout.read()
