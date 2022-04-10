@@ -70,6 +70,8 @@ Works fine generally, basically like the existing HA unifi_direct, and allows me
 
 History
 -
+### v0.0.4
+- Missed updating module version in v0.0.3 release; now 0.0.4.
 ### v0.0.3
 - Option ```--sshTimeout``` to explicitly set SSH connect timeout in seconds (float).
 
