@@ -26,6 +26,8 @@ Mqtt_password = os.environ['MQTT_PASSWORD']
 
 Unifi_ssh_username = os.environ['UNIFI_SSH_USERNAME']
 UseHostKeysFile = False
+SshTimeout = None
+MaxIdleTime = None
 
 Log = logging.getLogger(Logger_name)
 AP_hosts = []
@@ -121,6 +123,10 @@ def get_existing_clients():
 # If using Home Assistant MQTT device tracker, consider_home setting will be honored.
 def process(last_clients):
     unifiTracker = unifi.UnifiTracker(useHostKeys=UseHostKeysFile)
+    if SshTimeout is not None:
+        unifiTracker.SshTimeout = SshTimeout
+    if MaxIdleTime is not None:
+        unifiTracker.MaxIdleTime = MaxIdleTime
     for i in range(Snapshot_loop_count):
         try:
             last_clients, added, deleted = unifiTracker.scan_aps(ssh_username=Unifi_ssh_username,
@@ -162,6 +168,8 @@ if __name__ == '__main__':
     ap.add_argument("--loggername", type=str, required=False, action='store', default=Logger_name, help="Logger name.")
     ap.add_argument("--hostlist", type=str, required=True, action='store', help="List of access point IP addresses.")
     ap.add_argument("--usehostkeys", required=False, action='store_true', default=UseHostKeysFile, help="Use known_hosts file.")
+    ap.add_argument("--sshTimeout", type=float, required=False, action='store', default=SshTimeout, help="SSH timeout in secs.")
+    ap.add_argument("--maxIdleTime", type=int, required=False, action='store', default=MaxIdleTime, help="Maximum AP client idle time in secs.")
     ap.add_argument("--mqtthost", type=str, required=False, action='store', default=Mqtt_host, help="MQTT host.")
     ap.add_argument("--mqttport", type=int, required=False, action='store', default=Mqtt_port, help="MQTT port.")
     ap.add_argument("--mqtts", required=False, action='store_true', default=False, help="Use MQTT TLS.")
@@ -180,6 +188,8 @@ if __name__ == '__main__':
         unifi._LOGGER = Log
     AP_hosts = args.hostlist.split(',')
     UseHostKeysFile = args.usehostkeys
+    SshTimeout = args.sshTimeout
+    MaxIdleTime = args.maxIdleTime
     Log.debug(AP_hosts)
     Mqtt_host = args.mqtthost
     Mqtt_port = args.mqttport

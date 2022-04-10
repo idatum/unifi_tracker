@@ -67,3 +67,14 @@ In summary: ```device_tracker.py``` drives the main processing and handles MQTT,
 Summary
 -
 Works fine generally, basically like the existing HA unifi_direct, and allows me to more freely innovate and be less dependent on another component for running HA for my home automation.
+
+History
+-
+### v0.0.3
+- Option ```--sshTimeout``` to explicitly set SSH connect timeout in seconds (float).
+
+- Option ```--maxIdleTime``` to set AP client idle time threshold in seconds (int). Use ```--maxIdleTime``` to check the ```idletime``` field of ```sta_table``` and filter on clients that are below the given threshold. There are cases where I've seen a tracked client go out of range of the last connected AP yet still shows as connected for several minutes. I've been able to repro this case when a mobile phone goes out of range quickly (e.g. driving away in a car). If the mobile phone slowly goes out of range (e.g. walking away), it correctly shows as disconnected. Setting this threshold ensures the status changes in a more deterministic amount of time.
+### v0.0.2
+- Option ```--usehostkeys``` to use existing default host keys file (e.g. ~/.ssh/known_hosts).
+### v0.0.1
+- Initial release.

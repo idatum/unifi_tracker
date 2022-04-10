@@ -12,10 +12,14 @@ class UnifiTrackerException(Exception):
         super().__init__(message)
 
 class UnifiTracker():
-    def __init__(self, useHostKeys=False):
-        # SSH client ignoring existing host key.
+    def __init__(self, useHostKeys: bool=False):
         self.ssh_client = SSHClient()
+        # SSH client ignoring existing host key.
         self._useHostKeys = useHostKeys
+        # SSH client connect timeout in seconds.
+        self._sshTimeout = None
+        # WiFi client idle time threshold in seconds.
+        self._maxIdleTime = None
         # Unifi command to remotely call via SSH.
         self.UNIFI_CMDLINE = 'mca-dump'
         # Properties to extract from returned JSON.
@@ -29,8 +33,24 @@ class UnifiTracker():
         return self._useHostKeys
 
     @UseHostKeys.setter
-    def UseHostKeys(self, value):
+    def UseHostKeys(self, value: bool):
         self._useHostKeys = value
+
+    @property
+    def SshTimeout(self):
+        return self._sshTimeout
+
+    @SshTimeout.setter
+    def SshTimeout(self, value: float):
+        self._sshTimeout = value
+
+    @property
+    def MaxIdleTime(self):
+        return self._maxIdleTime
+
+    @MaxIdleTime.setter
+    def MaxIdleTime(self, value: int):
+        self._maxIdleTime = value
 
     def exec_ssh_cmdline(self, user: str, host: str, cmdline: str):
         '''Remotely execute command via SSH'''
@@ -40,7 +60,10 @@ class UnifiTracker():
                 self.ssh_client.load_system_host_keys()
             else:
                 self.ssh_client.set_missing_host_key_policy(WarningPolicy)
-            self.ssh_client.connect(hostname=host, username=user, look_for_keys=True)
+            self.ssh_client.connect(hostname=host,
+                                    username=user,
+                                    look_for_keys=True,
+                                    timeout=self._sshTimeout)
             _, stdout, stderr = self.ssh_client.exec_command(cmdline)
             out = stdout.read()
             err = stderr.read()
@@ -79,7 +102,18 @@ class UnifiTracker():
         deleted = []
         with Pool() as pool:
             for ap_mac_clients in pool.starmap(self.get_ap_mac_clients, [(ssh_username, ap_host) for ap_host in ap_hosts]):
-                mac_clients.update(ap_mac_clients)
+                if self._maxIdleTime is None:
+                    mac_clients.update(ap_mac_clients)
+                else:
+                    # Filter on clients below idle time threshold
+                    for mac, client in ap_mac_clients.items():
+                        idletime = client["idletime"] if 'idletime' in client else 0
+                        _LOGGER.debug(f'{mac} idletime={idletime}')
+                        if idletime > self._maxIdleTime:
+                            if mac in last_mac_clients:
+                                _LOGGER.info(f'{mac} exceeded idle time threshold; excluding.')
+                            continue
+                        mac_clients[mac] = client
         for mac, client in mac_clients.items():
             if mac not in last_mac_clients:
                 added.append(mac)

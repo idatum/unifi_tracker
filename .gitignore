@@ -127,3 +127,6 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
+
+# Ignore test dependencies
+tests/unifi_tracker.py
