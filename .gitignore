@@ -130,3 +130,4 @@ dmypy.json
 
 # Ignore test dependencies
 tests/unifi_tracker.py
+.vscode/

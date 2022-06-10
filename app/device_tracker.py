@@ -15,6 +15,8 @@ Retained_maxcount = 100
 Retained_timeout = 1
 Retained_queue = Queue(maxsize=Retained_maxcount)
 Topic_base = 'device_tracker/unifi_tracker'
+Home_payload = "home"
+Away_payload = None
 
 Mqtt_host = "mosquitto"
 Mqtt_port = 1883
@@ -133,10 +135,9 @@ def process(last_clients):
                                                                  ap_hosts=AP_hosts,
                                                                  last_mac_clients=last_clients)
             for mac in added:
-                publish_state(f'{Topic_base}/{mac}', 'home', True)
+                publish_state(topic=f'{Topic_base}/{mac}', state=Home_payload, retain=True)
             for mac in deleted:
-                # Empty payload
-                publish_state(f'{Topic_base}/{mac}', None, True)
+                publish_state(topic=f'{Topic_base}/{mac}', state=Away_payload, retain=True)
         except unifi.UnifiTrackerException as e:
             # Too common to be a warning/error
             Log.info(e)
@@ -174,6 +175,8 @@ if __name__ == '__main__':
     ap.add_argument("--mqttport", type=int, required=False, action='store', default=Mqtt_port, help="MQTT port.")
     ap.add_argument("--mqtts", required=False, action='store_true', default=False, help="Use MQTT TLS.")
     ap.add_argument("--topic", type=str, required=False, action='store', default=Topic_base, help="MQTT topic.")
+    ap.add_argument("--homePayload", type=str, required=False, action='store', default=Home_payload, help="Home payload.")
+    ap.add_argument("--awayPayload", type=str, required=False, action='store', default=Away_payload, help="Away payload.")
     ap.add_argument("--delay", type=int, required=False, action='store', default=Scan_delay_secs, \
                                choices=range(1,61), metavar="{1..61}", help="Loop delay seconds.")
 
@@ -195,6 +198,8 @@ if __name__ == '__main__':
     Mqtt_port = args.mqttport
     Mqtt_tls_set = {} if args.mqtts else None
     Topic_base = args.topic
+    Home_payload = args.homePayload
+    Away_payload = args.awayPayload
     Scan_delay_secs = args.delay
 
     main()
