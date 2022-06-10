@@ -49,7 +49,7 @@ MQTT messages are retained so HA can restart and pick up current presence state.
   ```
   Notice the empty (None) state payload for a deleted device. In HA for this example, the presence for the associated Person will change to away after about a minute.
 
-Starting with HA 2022.6, MQTT tracked devices are no longer defined under the ```device_tracker``` platform, and are now under ```mqtt```. With this change, there is no longer a  ```consider_home``` parameter that will work with MQTT. You now need to publish a payload of "not_home". Note that presense state will now be "unknown" until an associated MQTT message is published. This may need to be accounted for in any HA automations.
+Starting with HA 2022.6, MQTT tracked devices are no longer defined under the ```device_tracker``` platform, and are now under ```mqtt```. With this change, there is no longer a  ```consider_home``` parameter that will work with MQTT. You now need to publish a payload of "not_home". Note that presence state will now be "unknown" until an associated MQTT message is published. This may need to be accounted for in any HA automations.
 
 If any one AP fails to return output from ```mca-dump```, the entire diff will fail. Note that clients can roam, switching from one AP to another. I only have a couple APs, but if you have many, the probability of failing to do a diff increases. I get 1 or 2 failures per hour from any of the my APs (it simply doesn't return any results -- no clue why).
 
@@ -74,7 +74,7 @@ Works fine generally, basically like the existing HA unifi_direct, and allows me
 History
 -
 ### v0.0.5
-- Added device_tracker.py options ```--homePayload``` (default is "home") and ```--awayPayload``` for MQTT message payload, corresponding to home and away presense. Starting with HA 2022.6, if you define your devices under HA's ```mqtt``` platform instead of ```device_tracker```, you should use ```--awayPayload=not_home```.
+- Added device_tracker.py options ```--homePayload``` (default is "home") and ```--awayPayload``` for MQTT message payload, corresponding to home and away presence. Starting with HA 2022.6, if you define your devices under HA's ```mqtt``` platform instead of ```device_tracker```, you should use ```--awayPayload=not_home```.
 ### v0.0.4
 - Missed updating module version in v0.0.3 release; now 0.0.4.
 ### v0.0.3
