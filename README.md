@@ -1,10 +1,12 @@
 MQTT Unifi AP device tracker
 -
-I use Ubiquiti Unifi AP AC Pro devices for my home network Wifi. Previously I used Home Assistant's (HA) Unifi Direct integration for wifi client device tracking and presence detection. Generally, presence detection allows automations like turning down the heat, etc, when no one is home. My effort here is to substitute HA's Unifi Direct with an implementation that only relies on HS's MQTT device tracker functionality.
+I use Ubiquiti Unifi AP AC Pro devices for my home network Wifi. With ```unifi_tracker```, Unifi APs can be used for WiFi device tracking and presence detection.
+
+Generally, presence detection allows [Home Assistant (HA)](https://www.home-assistant.io/) automations like turning down the heat, etc, when no one is home. My effort here is to substitute HA's Unifi Direct with an implementation that only relies on the MQTT integration device tracker functionality.
 
 From looking at the HA github for the unifi_direct component, improvements seem to be stalled on separating Unifi specific functionality. Also, I'm never really comfortable with secrets.yaml having a password with essentially full access to my router and APs -- I prefer SSH key auth whenever possible.
 
-These and other points motivated me to create a seperate Docker container service using MQTT to post AP client connects/disconnects. Much of the functionality to interact with the AP was inspired from the existing unifi_direct integration, which generally still works fine:
+These and other points motivated me to create a seperate Docker container service using MQTT to post AP client connects/disconnects. Much of the functionality to interact with the AP was inspired from the existing unifi_direct integration:
 
 https://github.com/home-assistant/core/tree/dev/homeassistant/components/unifi_direct
 
@@ -28,30 +30,21 @@ https://github.com/idatum/unifi_tracker/blob/main/app/device_tracker.py provides
 
 A few key notes:
 -
-MQTT messages are retained so HA can restart and pick up current presence state. The topic has the MAC address, and the payload is "home". Here is an example HA (pre 2022.6) device_tracker.yaml (included in configuration.yaml):
+MQTT messages are retained so HA can restart and pick up current presence state. The topic has the MAC address, and the payload is "home" or "not_home" (both configurable). Here is an example HA 2022.9 and above mqtt device tracker configuration:
 ```
-- platform: mqtt
-  consider_home: 60
-  devices:
-    tracked_phone: "device_tracker/unifi_tracker/xx:xx:xx:xx:xx:xx"
-  qos: 1
-  source_type: router
+mqtt:
+  device_tracker:
+    - name: "my_phone"
+      state_topic: "device_tracker/unifi_tracker/xx:xx:xx:xx:xx:xx"
   ```
-  Note ```consider_home```: to have HA versions previous to 2022.6 correctly honor that setting, deleting the retained message is required instead of publishing "not_home" in the payload. To delete a retained MQTT message, you publish a retained topic with no payload. Here's the code in ```device_tracker.py```:
 
-  ```
-              last_clients, added, deleted = unifiTracker.scan_aps(ap_hosts=AP_hosts, last_mac_clients=last_clients)
-            for mac in added:
-                publish_state(topic=f'{Topic_base}/{mac}', state='home', retain=True)
-            for mac in deleted:
-                # Empty payload
-                publish_state(topic=f'{Topic_base}/{mac}', state=None, retain=True)
-  ```
-  Notice the empty (None) state payload for a deleted device. In HA for this example, the presence for the associated Person will change to away after about a minute.
+Starting with HA 2022.9, MQTT tracked devices are no longer defined under the ```device_tracker``` platform, and are now under ```mqtt```. With this change, there is no longer a  ```consider_home``` parameter that will work with MQTT. You now need to publish a payload of "not_home". Note that presence state will now be "unknown" until an associated MQTT message is published. This may need to be accounted for in any HA automations.
 
-Starting with HA 2022.6, MQTT tracked devices are no longer defined under the ```device_tracker``` platform, and are now under ```mqtt```. With this change, there is no longer a  ```consider_home``` parameter that will work with MQTT. You now need to publish a payload of "not_home". Note that presence state will now be "unknown" until an associated MQTT message is published. This may need to be accounted for in any HA automations.
+Consider using the --maxIdleTime option for ```device_tracker.py``` to delay a change to "away", similar to the old behavior of ```consider_home```.
 
-If any one AP fails to return output from ```mca-dump```, the entire diff will fail. Note that clients can roam, switching from one AP to another. I only have a couple APs, but if you have many, the probability of failing to do a diff increases. I get 1 or 2 failures per hour from any of the my APs (it simply doesn't return any results -- no clue why).
+If any one AP fails to return output from ```mca-dump```, the entire diff will fail. Note that clients can roam, switching from one AP to another.
+
+I only have a couple APs, but if you have many, the probability of failing to do a diff increases. I get 1 or 2 failures per hour from any of the my APs (it simply doesn't return any results -- no clue why).
 
 I use multiprocessing.Pool to retrieve output in parallel from the APs.
 
@@ -73,6 +66,8 @@ Works fine generally, basically like the existing HA unifi_direct, and allows me
 
 History
 -
+### v0.0.6
+- Update README and docstrings corresponding to changes in HA 2022.9.
 ### v0.0.5
 - Added device_tracker.py options ```--homePayload``` (default is "home") and ```--awayPayload``` for MQTT message payload, corresponding to home and away presence. Starting with HA 2022.6, if you define your devices under HA's ```mqtt``` platform instead of ```device_tracker```, you should use ```--awayPayload=not_home```.
 ### v0.0.4

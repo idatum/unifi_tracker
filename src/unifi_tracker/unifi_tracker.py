@@ -12,7 +12,9 @@ class UnifiTrackerException(Exception):
         super().__init__(message)
 
 class UnifiTracker():
+    '''Retrieve AP WiFi clients'''
     def __init__(self, useHostKeys: bool=False):
+        '''Initialize with option useHostKeys property.'''
         self.ssh_client = SSHClient()
         # SSH client ignoring existing host key.
         self._useHostKeys = useHostKeys
@@ -30,6 +32,7 @@ class UnifiTracker():
 
     @property
     def UseHostKeys(self):
+        '''Whether to ignore existing SSH client host key.'''
         return self._useHostKeys
 
     @UseHostKeys.setter
@@ -38,6 +41,7 @@ class UnifiTracker():
 
     @property
     def SshTimeout(self):
+        '''SSH client connect timeout in seconds.'''
         return self._sshTimeout
 
     @SshTimeout.setter
@@ -46,6 +50,7 @@ class UnifiTracker():
 
     @property
     def MaxIdleTime(self):
+        '''WiFi client idle time threshold in seconds.'''
         return self._maxIdleTime
 
     @MaxIdleTime.setter
@@ -93,7 +98,8 @@ class UnifiTracker():
     def scan_aps(self, ssh_username: str, ap_hosts: list[str], last_mac_clients: dict={}):
         '''Retrieve and merge clients from all APs; diff with last retrieved.
         Return tuple: dict of clients, list of client adds, list of client deletes.
-        All AP retrievals need to succeed in order to process diff.'''
+        All AP retrievals need to succeed in order to process diff.
+        '''
         _LOGGER.debug("scanning start")
         if len(ap_hosts) > self.MAX_AP_HOST_SCANS:
             raise UnifiTrackerException(f"Exceeded limit of {self.MAX_AP_HOST_SCANS} APs that can be scanned in parallel.")

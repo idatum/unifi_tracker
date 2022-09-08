@@ -38,8 +38,8 @@ Scan_delay_secs = 15
 Snapshot_loop_count = int(round(24 * 60 * (60 / Scan_delay_secs), 0))
 
 
-# Publish state to MQTT and retain.
 def publish_state(topic: str, state: str, retain: bool=True):
+    '''Publish state to MQTT and optionally retain.'''
     try:
         info = Mqtt_client.publish(topic=topic,
                                    payload=state,
@@ -50,8 +50,8 @@ def publish_state(topic: str, state: str, retain: bool=True):
         Log.exception(e)
 
 
-# Connect to MQTT host
 def mqtt_connect():
+    '''Connect to MQTT host.'''
     if Mqtt_username is not None:
         Mqtt_client.username_pw_set(username=os.environ['MQTT_USERNAME'],
                                     password=os.environ['MQTT_PASSWORD'])
@@ -62,22 +62,23 @@ def mqtt_connect():
     Mqtt_client.loop_start()
 
 
-# Cleanup MQTT connection
 def mqtt_disconnect():
+    '''Cleanup MQTT connection.'''
     Mqtt_client.loop_stop()
     Mqtt_client.disconnect()
 
 
-# Process callback; enqueue retained topic.
 def on_retained_message(client, queue, message):
+    '''Process callback; enqueue retained topic.'''
     Log.debug(message.topic)
     if not queue.full():
         queue.put_nowait(message.topic)
 
 
-# Multiprocess Process method to retrieve retained topic.
-# Fill queue with topics in callback.
 def get_retained_messages():
+    '''Multiprocess Process method to retrieve retained topic.
+    Fill queue with topics in callback.
+    '''
     Log.debug('Started get retrained messages process')
     subscribe.callback(callback=on_retained_message,
                        userdata=Retained_queue,
@@ -90,8 +91,8 @@ def get_retained_messages():
                              "password": Mqtt_password})
 
 
-# Retrieve persisted MQTT topics for existing client MACs
 def get_existing_clients():
+    '''Retrieve persisted MQTT topics for existing client MACs'''
     Log.info('Retrieving retained clients')
     try:
         p = Process(target=get_retained_messages)
@@ -118,12 +119,12 @@ def get_existing_clients():
     return existing_macs
 
 
-# Inner loop of processing.
-# Perform diff between existing clients and last retrieved clients; publish to MQTT.
-# To indicate present state, publish topic and retain with 'home' payload;
-# for away state, publish topic and retain with empty payload, which per MQTT, deletes.
-# If using Home Assistant MQTT device tracker, consider_home setting will be honored.
 def process(last_clients):
+    '''Inner loop of processing.
+    Perform diff between existing clients and last retrieved clients; publish to MQTT.
+    To indicate present state, publish topic and retain with 'home' payload;
+    for away state, publish topic and retain with 'not_home' payload'.
+    '''
     unifiTracker = unifi.UnifiTracker(useHostKeys=UseHostKeysFile)
     if SshTimeout is not None:
         unifiTracker.SshTimeout = SshTimeout
@@ -144,9 +145,10 @@ def process(last_clients):
         time.sleep(Scan_delay_secs)
 
 
-# Outer loop of processing.
-# Initialize inner loop with existing persisted client MACs.
 def main():
+    '''Outer loop of processing.
+    Initialize inner loop with existing persisted client MACs.
+    '''
     Log.info('Starting processing loop.')
     while True:
         Log.debug("Scanning started.")

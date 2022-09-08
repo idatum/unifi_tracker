@@ -1,5 +1,5 @@
 '''Track the comings and goings of WiFi clients on multiple Unifi APs and generate a diff between scans.'''
 
-__version__ = '0.0.5'
+__version__ = '0.0.6'
 
 from .unifi_tracker import *
