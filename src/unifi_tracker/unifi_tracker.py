@@ -1,3 +1,4 @@
+import os
 import json
 import logging
 from paramiko import WarningPolicy
@@ -29,6 +30,8 @@ class UnifiTracker():
         self.UNIFI_CLIENT_TABLE = 'sta_table'
         # Some reasonable limit to number of hosts to scan in parallel.
         self.MAX_AP_HOST_SCANS = 32
+        # Scanning processes run in parallel; set to 0 to run serially.
+        self._processes = os.cpu_count()
 
     @property
     def UseHostKeys(self):
@@ -56,6 +59,15 @@ class UnifiTracker():
     @MaxIdleTime.setter
     def MaxIdleTime(self, value: int):
         self._maxIdleTime = value
+
+    @property
+    def Processes(self):
+        '''Scanning processes run in parallel; set to 0 for sequential processing.'''
+        return self._processes
+
+    @Processes.setter
+    def Processes(self, value: int):
+        self._processes = value
 
     def exec_ssh_cmdline(self, user: str, host: str, cmdline: str):
         '''Remotely execute command via SSH'''
@@ -93,7 +105,22 @@ class UnifiTracker():
 
     def get_ap_mac_clients(self, ssh_username: str, ap_host: str):
         '''MAC to client JSON from a Unifi AP'''
+        _LOGGER.debug(f'Scanning {ap_host}.')
         return {client.get('mac').upper(): client for client in self.get_ap_clients(ssh_username=ssh_username, ap_host=ap_host)}
+
+    def parallel_scan(self, ssh_username: str, ap_hosts: list[str]):
+        '''List of results of parallel calls to get_ap_mac_clients.'''
+        with Pool(processes=self._processes) as pool:
+            _LOGGER.debug(f'Running {self._processes} scans in parallel.')
+            return pool.starmap(self.get_ap_mac_clients, [(ssh_username, ap_host) for ap_host in ap_hosts])
+
+    def sequential_scan(self, ssh_username: str, ap_hosts: list[str]):
+        '''List of results of sequential calls to get_ap_mac_clients'''
+        all_ap_mac_clients = []
+        for ap_host in ap_hosts:
+            macs_res = self.get_ap_mac_clients(ssh_username, ap_host)
+            all_ap_mac_clients.append(macs_res)
+        return all_ap_mac_clients
 
     def scan_aps(self, ssh_username: str, ap_hosts: list[str], last_mac_clients: dict={}):
         '''Retrieve and merge clients from all APs; diff with last retrieved.
@@ -106,20 +133,23 @@ class UnifiTracker():
         mac_clients = {}
         added = []
         deleted = []
-        with Pool() as pool:
-            for ap_mac_clients in pool.starmap(self.get_ap_mac_clients, [(ssh_username, ap_host) for ap_host in ap_hosts]):
-                if self._maxIdleTime is None:
-                    mac_clients.update(ap_mac_clients)
-                else:
-                    # Filter on clients below idle time threshold
-                    for mac, client in ap_mac_clients.items():
-                        idletime = client["idletime"] if 'idletime' in client else 0
-                        _LOGGER.debug(f'{mac} idletime={idletime}')
-                        if idletime > self._maxIdleTime:
-                            if mac in last_mac_clients:
-                                _LOGGER.info(f'{mac} exceeded idle time threshold; excluding.')
-                            continue
-                        mac_clients[mac] = client
+        if self._processes == 0:
+            all_ap_mac_clients = self.sequential_scan(ssh_username, ap_hosts)
+        else:
+            all_ap_mac_clients = self.parallel_scan(ssh_username, ap_hosts)
+        for ap_mac_clients in all_ap_mac_clients:
+            if self._maxIdleTime is None:
+                mac_clients.update(ap_mac_clients)
+            else:
+                # Filter on clients below idle time threshold
+                for mac, client in ap_mac_clients.items():
+                    idletime = client["idletime"] if 'idletime' in client else 0
+                    _LOGGER.debug(f'{mac} idletime={idletime}')
+                    if idletime > self._maxIdleTime:
+                        if mac in last_mac_clients:
+                            _LOGGER.info(f'{mac} exceeded idle time threshold; excluding.')
+                        continue
+                    mac_clients[mac] = client
         for mac, client in mac_clients.items():
             if mac not in last_mac_clients:
                 added.append(mac)

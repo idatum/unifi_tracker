@@ -1,3 +1,4 @@
+import os
 import unittest
 import unifi_tracker as unifi
 
@@ -44,6 +45,18 @@ class TestPropertySetters(unittest.TestCase):
         maxIdleTime = 1
         unifi_tracker.MaxIdleTime = maxIdleTime + 1
         assert(maxIdleTime + 1 == unifi_tracker.MaxIdleTime)
+
+    def test_processes_default(self):
+        # Processes defaults to os.cpu_count()
+        processes = os.cpu_count()
+        unifi_tracker = unifi.UnifiTracker()
+        assert(processes == unifi_tracker.Processes)
+
+    def test_processes_setter(self):
+        unifi_tracker = unifi.UnifiTracker()
+        processes = 0
+        unifi_tracker.Processes = processes + 1
+        assert(processes + 1 == unifi_tracker.Processes)
 
 if __name__ == "__main__":
     unittest.main()

@@ -4,7 +4,6 @@ import argparse
 import logging
 import paho.mqtt.client as mqtt
 import paho.mqtt.subscribe as subscribe
-import ssl
 from multiprocessing import Queue
 from multiprocessing import Process
 import unifi_tracker as unifi
@@ -30,6 +29,7 @@ Unifi_ssh_username = os.environ['UNIFI_SSH_USERNAME']
 UseHostKeysFile = False
 SshTimeout = None
 MaxIdleTime = None
+Processes = None
 
 Log = logging.getLogger(Logger_name)
 AP_hosts = []
@@ -130,6 +130,8 @@ def process(last_clients):
         unifiTracker.SshTimeout = SshTimeout
     if MaxIdleTime is not None:
         unifiTracker.MaxIdleTime = MaxIdleTime
+    if Processes is not None:
+        unifiTracker.Processes = Processes
     for i in range(Snapshot_loop_count):
         try:
             last_clients, added, deleted = unifiTracker.scan_aps(ssh_username=Unifi_ssh_username,
@@ -173,6 +175,7 @@ if __name__ == '__main__':
     ap.add_argument("--usehostkeys", required=False, action='store_true', default=UseHostKeysFile, help="Use known_hosts file.")
     ap.add_argument("--sshTimeout", type=float, required=False, action='store', default=SshTimeout, help="SSH timeout in secs.")
     ap.add_argument("--maxIdleTime", type=int, required=False, action='store', default=MaxIdleTime, help="Maximum AP client idle time in secs.")
+    ap.add_argument("--processes", type=int, required=False, action='store', default=Processes, help="Scans run in parallel; set to 0 for sequential.")
     ap.add_argument("--mqtthost", type=str, required=False, action='store', default=Mqtt_host, help="MQTT host.")
     ap.add_argument("--mqttport", type=int, required=False, action='store', default=Mqtt_port, help="MQTT port.")
     ap.add_argument("--mqtts", required=False, action='store_true', default=False, help="Use MQTT TLS.")
@@ -195,6 +198,7 @@ if __name__ == '__main__':
     UseHostKeysFile = args.usehostkeys
     SshTimeout = args.sshTimeout
     MaxIdleTime = args.maxIdleTime
+    Processes = args.processes
     Log.debug(AP_hosts)
     Mqtt_host = args.mqtthost
     Mqtt_port = args.mqttport
