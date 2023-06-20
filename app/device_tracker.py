@@ -20,7 +20,7 @@ Away_payload = None
 Mqtt_host = "mosquitto"
 Mqtt_port = 1883
 Mqtt_tls_set = None
-Mqtt_client = mqtt.Client(clean_session=True)
+Mqtt_client = None
 Mqtt_qos = 1
 Mqtt_username = os.environ['MQTT_USERNAME']
 Mqtt_password = os.environ['MQTT_PASSWORD']
@@ -52,6 +52,9 @@ def publish_state(topic: str, state: str, retain: bool=True):
 
 def mqtt_connect():
     '''Connect to MQTT host.'''
+    global Mqtt_client
+
+    Mqtt_client = mqtt.Client(clean_session=True)
     if Mqtt_username is not None:
         Mqtt_client.username_pw_set(username=os.environ['MQTT_USERNAME'],
                                     password=os.environ['MQTT_PASSWORD'])

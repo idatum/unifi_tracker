@@ -66,10 +66,11 @@ Works fine generally, basically like the existing HA unifi_direct, and allows me
 
 History
 -
+### v0.0.8
+- Bug fix: Recreate paho.mqtt.client.Client to avoid ```ERROR:labtracker:SSL/TLS has already been configured.``` on MQTT disconnect/reconnect.
 ### v0.0.7
 - Added device_tracker.py option ```--processes``` to control the number of concurrent processes run during AP scanning, or to run them sequentially (i.e. ```--processes=0```).
 - Tested under Python11 and Debian12.
--
 ### v0.0.6
 - Update README and docstrings corresponding to changes in HA 2022.9.
 ### v0.0.5
