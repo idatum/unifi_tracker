@@ -40,7 +40,7 @@ mqtt:
 
 Starting with HA 2022.9, MQTT tracked devices are no longer defined under the ```device_tracker``` platform, and are now under ```mqtt```. With this change, there is no longer a  ```consider_home``` parameter that will work with MQTT. You now need to publish a payload of "not_home". Note that presence state will now be "unknown" until an associated MQTT message is published. This may need to be accounted for in any HA automations.
 
-Consider using the --maxIdleTime option for ```device_tracker.py``` to delay a change to "away", similar to the old behavior of ```consider_home```.
+Consider using the --maxIdleTime option for ```device_tracker.py``` to delay a change to "away", similar to the old behavior of ```consider_home```. Also, I recommend using the ```sshTimeout``` option to avoid potentially hanging on the SSH channel if the AP is rebooted (e.g. firmware update).
 
 If any one AP fails to return output from ```mca-dump```, the entire diff will fail. Note that clients can roam, switching from one AP to another.
 
