@@ -66,6 +66,8 @@ Works fine generally, basically like the existing HA unifi_direct, and allows me
 
 History
 -
+### v0.0.9
+- Bug fix: Apply ```--sshTimeout``` arg value to ```timeout``` parameter of ```paramiko.client.SSHClient exec_command()```; use local scope for Queue variable.
 ### v0.0.8
 - Bug fix: Recreate paho.mqtt.client.Client to avoid ```ERROR:labtracker:SSL/TLS has already been configured.``` on MQTT disconnect/reconnect.
 ### v0.0.7

@@ -81,7 +81,9 @@ class UnifiTracker():
                                     username=user,
                                     look_for_keys=True,
                                     timeout=self._sshTimeout)
-            _, stdout, stderr = self.ssh_client.exec_command(cmdline)
+            _LOGGER.debug("SSH connected.")
+            _, stdout, stderr = self.ssh_client.exec_command(cmdline, timeout=self._sshTimeout)
+            _LOGGER.debug("SSH command executed.")
             out = stdout.read()
             err = stderr.read()
         finally:

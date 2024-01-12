@@ -12,7 +12,6 @@ Logger_name = "device_tracker"
 
 Retained_maxcount = 100
 Retained_timeout = 1
-Retained_queue = Queue(maxsize=Retained_maxcount)
 Topic_base = 'device_tracker/unifi_tracker'
 Home_payload = "home"
 Away_payload = None
@@ -71,20 +70,20 @@ def mqtt_disconnect():
     Mqtt_client.disconnect()
 
 
-def on_retained_message(client, queue, message):
+def on_retained_message(_, queue, message):
     '''Process callback; enqueue retained topic.'''
     Log.debug(message.topic)
     if not queue.full():
         queue.put_nowait(message.topic)
 
 
-def get_retained_messages():
+def get_retained_messages(retained_queue):
     '''Multiprocess Process method to retrieve retained topic.
     Fill queue with topics in callback.
     '''
     Log.debug('Started get retrained messages process')
     subscribe.callback(callback=on_retained_message,
-                       userdata=Retained_queue,
+                       userdata=retained_queue,
                        topics=f"{Topic_base}/+",
                        qos=Mqtt_qos,
                        hostname=Mqtt_host,
@@ -96,9 +95,10 @@ def get_retained_messages():
 
 def get_existing_clients():
     '''Retrieve persisted MQTT topics for existing client MACs'''
+    retained_queue = Queue(maxsize=Retained_maxcount)
     Log.info('Retrieving retained clients')
     try:
-        p = Process(target=get_retained_messages)
+        p = Process(target=get_retained_messages, args=(retained_queue,))
         p.start()
         p.join(timeout=Retained_timeout)
         p.terminate()
@@ -107,12 +107,12 @@ def get_existing_clients():
             p.close()
         except ValueError as e:
             Log.debug(e)
-        if Retained_queue.empty():
+        if retained_queue.empty():
             Log.info('No retained clients retrieved.')
             return {}
         existing_macs = {}
-        while not Retained_queue.empty():
-            topic = Retained_queue.get_nowait()
+        while not retained_queue.empty():
+            topic = retained_queue.get_nowait()
             if not topic:
                 break
             mac = topic.split('/')[-1]
