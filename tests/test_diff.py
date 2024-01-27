@@ -1,49 +1,58 @@
 import unittest
 import json
 import unifi_tracker as unifi
+import mock_clients as mcl
 
-TEST_RESULT_PROLOG = b'{"vap_table": [{"sta_table": '
-TEST_RESULT_EPILOG = b'}]}'
-TEST_CLIENTS1 = b'[{"mac": "mac1", "hostname": "hostname1"}, {"mac": "mac2", "hostname": "hostname2"}]'
-TEST_CLIENTS2 = b'[{"mac": "mac1", "hostname": "hostname1"}, {"mac": "mac3", "hostname": "hostname3"}]'
-TEST_CLIENTS3 = b'[{"mac": "mac3", "hostname": "hostname3"}, {"mac": "mac1", "hostname": "hostname1"}]'
+
+def mock0_exec_ssh_cmdline(user: str=None, host: str=None, cmdline: str=None):
+    return (json.dumps({"hostname": mcl.TEST_AP,
+                            "vap_table": [{"sta_table": mcl.TEST_CLIENTS0}]}).encode(), b'')
 
 
 def mock1_exec_ssh_cmdline(user: str=None, host: str=None, cmdline: str=None):
-    return (TEST_RESULT_PROLOG + TEST_CLIENTS1 + TEST_RESULT_EPILOG, b'')
+    return (json.dumps({"hostname": mcl.TEST_AP,
+                            "vap_table": [{"sta_table": mcl.TEST_CLIENTS1}]}).encode(), b'')
 
 
 def mock2_exec_ssh_cmdline(user: str=None, host: str=None, cmdline: str=None):
-    return (TEST_RESULT_PROLOG + TEST_CLIENTS2 + TEST_RESULT_EPILOG, b'')
-
-
-def mock3_exec_ssh_cmdline(user: str=None, host: str=None, cmdline: str=None):
-    return (TEST_RESULT_PROLOG + TEST_CLIENTS3 + TEST_RESULT_EPILOG, b'')
+    return (json.dumps({"hostname": mcl.TEST_AP,
+                            "vap_table": [{"sta_table": mcl.TEST_CLIENTS2}]}).encode(), b'')
 
 
 class TestDiff(unittest.TestCase):
 
     def test_simple_parse(self):
+        '''Expected get_ap_clients result'''
         unifiTracker = unifi.UnifiTracker()
-        unifiTracker.exec_ssh_cmdline = mock1_exec_ssh_cmdline
-        test_clients = unifiTracker.get_ap_clients('user', 'testhost')
-        assert(TEST_CLIENTS1.decode('utf-8') == json.dumps(test_clients))
+        # Force sequential
+        unifiTracker.Processes = 0
+        unifiTracker.MaxIdleThreashold = 0
+        unifiTracker.exec_ssh_cmdline = mock0_exec_ssh_cmdline
+        ap_clients = unifiTracker.get_ap_clients('user', 'testhost')
+        assert((mcl.TEST_AP, mcl.TEST_CLIENTS0) == ap_clients)
 
     def test_diff1(self):
+        '''Expected diff'''
         unifiTracker = unifi.UnifiTracker()
-        unifiTracker.exec_ssh_cmdline = mock2_exec_ssh_cmdline
-        diff = unifiTracker.scan_aps('user', ['testhost'], json.loads((TEST_RESULT_PROLOG + TEST_CLIENTS1 + TEST_RESULT_EPILOG)))
-        # Should be deterministic diff
-        assert("({'MAC1': {'mac': 'mac1', 'hostname': 'hostname1'}, 'MAC3': {'mac': 'mac3', 'hostname': 'hostname3'}}, ['MAC1', 'MAC3'], ['vap_table'])" == \
-               str(diff))
+        unifiTracker.exec_ssh_cmdline = mock1_exec_ssh_cmdline
+        last = {c['mac'].upper(): c for c in mcl.TEST_CLIENTS0}
+        diff = unifiTracker.scan_aps('user', [mcl.TEST_AP], last)
+        expect = ({c['mac'].upper(): c for c in mcl.TEST_CLIENTS1},
+                  [mcl.TEST_CLIENTS1[1]['mac'].upper()],
+                  [mcl.TEST_CLIENTS0[1]['mac'].upper()])
+        assert(expect == diff)
 
     def test_diff2(self):
+        '''Expected no diff with unordered clients.'''
         unifiTracker = unifi.UnifiTracker()
-        unifiTracker.exec_ssh_cmdline = mock3_exec_ssh_cmdline
-        diff = unifiTracker.scan_aps('user', ['testhost'], json.loads((TEST_RESULT_PROLOG + TEST_CLIENTS1 + TEST_RESULT_EPILOG)))
-        # Should be deterministic diff
-        assert("({'MAC3': {'mac': 'mac3', 'hostname': 'hostname3'}, 'MAC1': {'mac': 'mac1', 'hostname': 'hostname1'}}, ['MAC3', 'MAC1'], ['vap_table'])" == \
-               str(diff))
+        unifiTracker.exec_ssh_cmdline = mock1_exec_ssh_cmdline
+        last = {c['mac'].upper(): c for c in mcl.TEST_CLIENTS1}
+        diff = unifiTracker.scan_aps('user', [mcl.TEST_AP], last)
+        expect = ({c['mac'].upper(): c for c in mcl.TEST_CLIENTS2},
+                  [],
+                  [])
+        assert(expect == diff)
 
 if __name__ == "__main__":
     unittest.main()
+

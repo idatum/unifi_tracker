@@ -32,6 +32,8 @@ class UnifiTracker():
         self.MAX_AP_HOST_SCANS = 32
         # Scanning processes run in parallel; set to 0 to run serially.
         self._processes = os.cpu_count()
+        # Filter client properties
+        self._client_props = ('mac', 'ip', 'hostname', 'idletime', 'rssi')
 
     @property
     def UseHostKeys(self):
@@ -95,6 +97,7 @@ class UnifiTracker():
         ap_clients = []
         out, err = self.exec_ssh_cmdline(user=ssh_username, host=ap_host, cmdline=self.UNIFI_CMDLINE)
         jresult = json.loads(out.decode('utf-8'))
+        ap_hostname = jresult.get('hostname')
         if not jresult or self.UNIFI_SSID_TABLE not in jresult:
             _LOGGER.debug(f"{err}")
             raise UnifiTrackerException(f"No results for AP address {ap_host}")
@@ -103,12 +106,22 @@ class UnifiTracker():
                 _LOGGER.debug(jresult)
                 raise UnifiTrackerException(f"No client table {ap_host}")
             ap_clients += ssid.get(self.UNIFI_CLIENT_TABLE)
-        return ap_clients
+        return (ap_hostname, ap_clients)
+
+    def get_client_props(self, client, ap_hostname):
+        client = {p: client[p] if p in client else None for p in self._client_props}
+        client['ap_hostname'] = ap_hostname
+        return client
+
+    def get_client_display_name(self, client):
+        mac = client['mac']
+        return f"{client['hostname']} ({mac})" if 'hostname' in client else mac
 
     def get_ap_mac_clients(self, ssh_username: str, ap_host: str):
         '''MAC to client JSON from a Unifi AP'''
         _LOGGER.debug(f'Scanning {ap_host}.')
-        return {client.get('mac').upper(): client for client in self.get_ap_clients(ssh_username=ssh_username, ap_host=ap_host)}
+        ap_clients = self.get_ap_clients(ssh_username=ssh_username, ap_host=ap_host)
+        return {client.get('mac').upper(): self.get_client_props(client, ap_clients[0]) for client in ap_clients[1]}
 
     def parallel_scan(self, ssh_username: str, ap_hosts: list[str]):
         '''List of results of parallel calls to get_ap_mac_clients.'''
@@ -124,17 +137,8 @@ class UnifiTracker():
             all_ap_mac_clients.append(macs_res)
         return all_ap_mac_clients
 
-    def scan_aps(self, ssh_username: str, ap_hosts: list[str], last_mac_clients: dict={}):
-        '''Retrieve and merge clients from all APs; diff with last retrieved.
-        Return tuple: dict of clients, list of client adds, list of client deletes.
-        All AP retrievals need to succeed in order to process diff.
-        '''
-        _LOGGER.debug("scanning start")
-        if len(ap_hosts) > self.MAX_AP_HOST_SCANS:
-            raise UnifiTrackerException(f"Exceeded limit of {self.MAX_AP_HOST_SCANS} APs that can be scanned in parallel.")
+    def get_ap_mac_clients_filtered(self, ssh_username, ap_hosts, last_mac_clients):
         mac_clients = {}
-        added = []
-        deleted = []
         if self._processes == 0:
             all_ap_mac_clients = self.sequential_scan(ssh_username, ap_hosts)
         else:
@@ -152,16 +156,67 @@ class UnifiTracker():
                             _LOGGER.info(f'{mac} exceeded idle time threshold; excluding.')
                         continue
                     mac_clients[mac] = client
+        return mac_clients
+
+    def scan_aps(self, ssh_username: str, ap_hosts: list[str], last_mac_clients: dict={}):
+        '''Retrieve and merge clients from all APs; diff with last retrieved.
+        Return tuple: dict of clients, list of client adds, list of client deletes.
+        All AP retrievals need to succeed in order to process diff.
+        '''
+        _LOGGER.debug("scan_aps start")
+        if len(ap_hosts) > self.MAX_AP_HOST_SCANS:
+            raise UnifiTrackerException(f"Exceeded limit of {self.MAX_AP_HOST_SCANS} APs that can be scanned in parallel.")
+        added = []
+        deleted = []
+        mac_clients = self.get_ap_mac_clients_filtered(ssh_username, ap_hosts, last_mac_clients)
         for mac, client in mac_clients.items():
             if mac not in last_mac_clients:
                 added.append(mac)
-                hostname = f"{client['hostname']} ({mac})" if 'hostname' in client else mac
-                _LOGGER.info(f"added {hostname}")
+                _LOGGER.info(f"added {self.get_client_display_name(client)}")
         for mac, client in last_mac_clients.items():
             if mac not in mac_clients:
                 deleted.append(mac)
-                hostname = f"{client['hostname']} ({mac})" if 'hostname' in client else mac
-                _LOGGER.info(f"removed {hostname}")
+                _LOGGER.info(f"removed {self.get_client_display_name(client)}")
         _LOGGER.debug("scanning end")
 
         return mac_clients, added, deleted
+    
+    def scan_by_ap(self, ssh_username: str, ap_hosts: list[str], last_mac_clients: dict={}):
+        '''Retrieve and merge clients from all APs; diff with last grouped by AP hostname.
+        Return tuple: dict of clients, dict of AP client adds, dict of AP client deletes.
+        All AP retrievals need to succeed in order to process diff.
+        '''
+        _LOGGER.debug("scan_by_ap start")
+        if len(ap_hosts) > self.MAX_AP_HOST_SCANS:
+            raise UnifiTrackerException(f"Exceeded limit of {self.MAX_AP_HOST_SCANS} APs that can be scanned in parallel.")
+        added_by_ap = {}
+        deleted_by_ap = {}
+        mac_clients = self.get_ap_mac_clients_filtered(ssh_username, ap_hosts, last_mac_clients)
+        for mac, client in mac_clients.items():
+            client_ap = client['ap_hostname']
+            if mac not in last_mac_clients:
+                if client_ap not in added_by_ap:
+                    added_by_ap[client_ap] = []
+                added_by_ap[client_ap].append(mac)
+                _LOGGER.info(f"added {self.get_client_display_name(client)}")
+            else:
+                last_ap = last_mac_clients[mac]['ap_hostname']
+                if last_ap != client_ap:
+                    if client_ap not in added_by_ap:
+                        added_by_ap[client_ap] = []
+                    added_by_ap[client_ap].append(mac)
+                    if last_ap not in deleted_by_ap:
+                        deleted_by_ap[last_ap] = []
+                    deleted_by_ap[last_ap].append(mac)
+                    _LOGGER.info(f"{self.get_client_display_name(client)} changed AP")
+        for mac, client in last_mac_clients.items():
+            if mac not in mac_clients:
+                client_ap = client['ap_hostname']
+                if client_ap not in deleted_by_ap:
+                    deleted_by_ap[client_ap] = []
+                deleted_by_ap[client_ap].append(mac)
+                _LOGGER.info(f"removed {self.get_client_display_name(client)}")
+        _LOGGER.debug("scanning end")
+
+        return mac_clients, added_by_ap, deleted_by_ap
+
