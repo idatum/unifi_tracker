@@ -175,8 +175,8 @@ def process(last_clients):
             else:
                 last_clients = process_all(unifiTracker, last_clients)
         except unifi.UnifiTrackerException as e:
-            # Too common to be a warning/error
-            Log.info(e)
+            # Too common to be an error
+            Log.warning(e)
         time.sleep(Scan_delay_secs)
 
 

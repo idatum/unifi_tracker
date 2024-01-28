@@ -3,6 +3,7 @@ import json
 import logging
 from paramiko import WarningPolicy
 from paramiko import SSHClient
+import socket
 from multiprocessing import Pool
 
 _LOGGER = logging.getLogger("unifi_tracker")
@@ -88,6 +89,9 @@ class UnifiTracker():
             _LOGGER.debug("SSH command executed.")
             out = stdout.read()
             err = stderr.read()
+        except socket.timeout as e:
+            msg = f"SSH timeout: {host}"
+            raise UnifiTrackerException(msg) from e
         finally:
             self.ssh_client.close()
         return (out, err)
