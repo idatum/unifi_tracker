@@ -15,6 +15,7 @@ Retained_timeout = 1
 Topic_base = 'device_tracker/unifi_tracker'
 Home_payload = "home"
 Away_payload = None
+GroupByAP = False
 
 Mqtt_host = "mosquitto"
 Mqtt_port = 1883
@@ -82,15 +83,18 @@ def get_retained_messages(retained_queue):
     Fill queue with topics in callback.
     '''
     Log.debug('Started get retrained messages process')
-    subscribe.callback(callback=on_retained_message,
-                       userdata=retained_queue,
-                       topics=f"{Topic_base}/+",
-                       qos=Mqtt_qos,
-                       hostname=Mqtt_host,
-                       port=Mqtt_port,
-                       tls=Mqtt_tls_set,
-                       auth={"username":Mqtt_username,
-                             "password": Mqtt_password})
+    try:
+        subscribe.callback(callback=on_retained_message,
+                           userdata=retained_queue,
+                           topics=f"{Topic_base}/+/+" if GroupByAP else f"{Topic_base}/+",
+                           qos=Mqtt_qos,
+                           hostname=Mqtt_host,
+                           port=Mqtt_port,
+                           tls=Mqtt_tls_set,
+                           auth={"username":Mqtt_username,
+                                 "password": Mqtt_password})
+    except Exception as e:
+        Log.exception(e)
 
 
 def get_existing_clients():
@@ -115,11 +119,40 @@ def get_existing_clients():
             topic = retained_queue.get_nowait()
             if not topic:
                 break
+            Log.debug(f"Existing {topic}")
             mac = topic.split('/')[-1]
-            existing_macs[mac] = {'mac': f'{mac}'}
+            if GroupByAP:
+                ap_hostname = topic.split('/')[-2]
+                existing_macs[mac] = {'mac': f'{mac}', 'ap_hostname': f'{ap_hostname}'}
+            else:
+                existing_macs[mac] = {'mac': f'{mac}'}
     except Exception as e:
         Log.exception(e)
     return existing_macs
+
+
+def process_all(unifiTracker, last_clients):
+    last_clients, added, deleted = unifiTracker.scan_aps(ssh_username=Unifi_ssh_username,
+                                                            ap_hosts=AP_hosts,
+                                                            last_mac_clients=last_clients)
+    for mac in added:
+        publish_state(topic=f'{Topic_base}/{mac}', state=Home_payload, retain=True)
+    for mac in deleted:
+        publish_state(topic=f'{Topic_base}/{mac}', state=Away_payload, retain=True)
+    return last_clients
+
+
+def process_by_ap(unifiTracker, last_clients):
+    last_clients, added_by_ap, deleted_by_ap = unifiTracker.scan_by_ap(ssh_username=Unifi_ssh_username,
+                                                                        ap_hosts=AP_hosts,
+                                                                        last_mac_clients=last_clients)
+    for ap_hostname in added_by_ap:
+        for mac in added_by_ap[ap_hostname]:
+            publish_state(topic=f'{Topic_base}/{ap_hostname}/{mac}', state=Home_payload, retain=True)
+    for ap_hostname in deleted_by_ap:
+        for mac in deleted_by_ap[ap_hostname]:
+            publish_state(topic=f'{Topic_base}/{ap_hostname}/{mac}', state=Away_payload, retain=True)
+    return last_clients
 
 
 def process(last_clients):
@@ -137,13 +170,10 @@ def process(last_clients):
         unifiTracker.Processes = Processes
     for i in range(Snapshot_loop_count):
         try:
-            last_clients, added, deleted = unifiTracker.scan_aps(ssh_username=Unifi_ssh_username,
-                                                                 ap_hosts=AP_hosts,
-                                                                 last_mac_clients=last_clients)
-            for mac in added:
-                publish_state(topic=f'{Topic_base}/{mac}', state=Home_payload, retain=True)
-            for mac in deleted:
-                publish_state(topic=f'{Topic_base}/{mac}', state=Away_payload, retain=True)
+            if GroupByAP:
+                last_clients = process_by_ap(unifiTracker, last_clients)
+            else:
+                last_clients = process_all(unifiTracker, last_clients)
         except unifi.UnifiTrackerException as e:
             # Too common to be a warning/error
             Log.info(e)
@@ -187,6 +217,7 @@ if __name__ == '__main__':
     ap.add_argument("--awayPayload", type=str, required=False, action='store', default=Away_payload, help="Away payload.")
     ap.add_argument("--delay", type=int, required=False, action='store', default=Scan_delay_secs, \
                                choices=range(1,61), metavar="{1..61}", help="Loop delay seconds.")
+    ap.add_argument("--groupByAP", required=False, action='store_true', default=GroupByAP, help="Group clients by AP hostname.")
 
     args = ap.parse_args()
     logging.basicConfig(level=logging.DEBUG if args.debug else logging.INFO if args.info \
@@ -210,5 +241,6 @@ if __name__ == '__main__':
     Home_payload = args.homePayload
     Away_payload = args.awayPayload
     Scan_delay_secs = args.delay
+    GroupByAP = args.groupByAP
 
     main()
