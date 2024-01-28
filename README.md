@@ -19,7 +19,7 @@ https://pypi.org/project/unifi-tracker/
 
 Example application:
 - 
-https://github.com/idatum/unifi_tracker/blob/main/app/device_tracker.py provides an example intended for use with HA. It's a simple service using ```unifi_tracker```:
+https://github.com/idatum/unifi_tracker/blob/main/app/device_tracker.py provides an example intended for use with the HA MQTT integration. It's a simple service using ```unifi_tracker```:
 
 1. Periodically return client info from all APs.
 2. Either union all client MACs from all APs or group client MACs by AP hostname.
@@ -37,7 +37,7 @@ mqtt:
     - name: "my_phone_south"
       state_topic: "device_tracker/unifi_tracker/southAP/xx:xx:xx:xx:xx:xx"
   ```
-Using the option to group clients by AP, this creates 2 entities for a single phone WiFi client MAC address, for the northAP and the southAP hostname APs. You can then associate both with a single user in ```SettingsPeople/Select the devices that belong to this person```.
+Using the option to group clients by AP, this creates 2 entities for a single phone WiFi client MAC address, for the northAP and the southAP hostname APs. You can then associate both with a single user in ```Settings/People/Select the devices that belong to this person```.
 
 Starting with HA 2022.9, MQTT tracked devices are no longer defined under the ```device_tracker``` platform, and are now under ```mqtt```. With this change, there is no longer a  ```consider_home``` parameter that will work with MQTT. You now need to publish a payload of "not_home". Note that presence state will now be "unknown" until an associated MQTT message is published. This may need to be accounted for in any HA automations.
 
