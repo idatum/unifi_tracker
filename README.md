@@ -37,7 +37,7 @@ mqtt:
     - name: "my_phone_south"
       state_topic: "device_tracker/unifi_tracker/southAP/xx:xx:xx:xx:xx:xx"
   ```
-Using the option to group clients by AP, this creates 2 entities for a single phone WiFi client MAC address, for the northAP and the southAP hostname APs. You can then associate both with a single user in ```Settings/People/Select the devices that belong to this person```.
+Using the option to group clients by AP, this creates 2 entities for a single phone WiFi client MAC address, for the northAP and the southAP hostname APs. You can then associate both with a single user in ```Settings/People/Select the devices that belong to this person```. Or, create 2 People entities, one for the northAP and one for the southAP, so you can do presence detection per AP coverage area.
 
 Starting with HA 2022.9, MQTT tracked devices are no longer defined under the ```device_tracker``` platform, and are now under ```mqtt```. With this change, there is no longer a  ```consider_home``` parameter that will work with MQTT. You now need to publish a payload of "not_home". Note that presence state will now be "unknown" until an associated MQTT message is published. This may need to be accounted for in any HA automations.
 
