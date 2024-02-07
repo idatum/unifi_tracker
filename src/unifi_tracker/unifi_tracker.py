@@ -104,11 +104,11 @@ class UnifiTracker():
         ap_hostname = jresult.get('hostname')
         if not jresult or self.UNIFI_SSID_TABLE not in jresult:
             _LOGGER.debug(f"{err}")
-            raise UnifiTrackerException(f"No results for AP address {ap_host}")
+            raise UnifiTrackerException(f"No results for AP {ap_host}") from None
         for ssid in jresult[self.UNIFI_SSID_TABLE]:
             if self.UNIFI_CLIENT_TABLE not in ssid:
                 _LOGGER.debug(jresult)
-                raise UnifiTrackerException(f"No client table {ap_host}")
+                raise UnifiTrackerException(f"No client table {ap_host} {err}") from None
             ap_clients += ssid.get(self.UNIFI_CLIENT_TABLE)
         return (ap_hostname, ap_clients)
 
@@ -119,7 +119,8 @@ class UnifiTracker():
 
     def get_client_display_name(self, client):
         mac = client['mac']
-        return f"{client['hostname']} ({mac})" if 'hostname' in client else mac
+        hostname = client['hostname'] if 'hostname' in client else None
+        return f"{hostname} ({mac})" if hostname is not None else mac
 
     def get_ap_mac_clients(self, ssh_username: str, ap_host: str):
         '''MAC to client JSON from a Unifi AP'''

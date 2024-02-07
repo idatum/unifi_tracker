@@ -3,6 +3,7 @@ import time
 import argparse
 import logging
 import paho.mqtt.client as mqtt
+import paho.mqtt.enums as mqtt_enums
 import paho.mqtt.subscribe as subscribe
 from multiprocessing import Queue
 from multiprocessing import Process
@@ -54,7 +55,7 @@ def mqtt_connect():
     '''Connect to MQTT host.'''
     global Mqtt_client
 
-    Mqtt_client = mqtt.Client(clean_session=True)
+    Mqtt_client = mqtt.Client(clean_session=True, callback_api_version=mqtt_enums.CallbackAPIVersion.VERSION2)
     if Mqtt_username is not None:
         Mqtt_client.username_pw_set(username=os.environ['MQTT_USERNAME'],
                                     password=os.environ['MQTT_PASSWORD'])
@@ -175,8 +176,12 @@ def process(last_clients):
             else:
                 last_clients = process_all(unifiTracker, last_clients)
         except unifi.UnifiTrackerException as e:
-            # Too common to be an error
-            Log.warning(e)
+            if e.__context__ is None:
+                # Too common to be an error
+                Log.info(e)
+            else:
+                Log.warning(e)
+
         time.sleep(Scan_delay_secs)
 
 
