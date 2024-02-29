@@ -118,7 +118,7 @@ class UnifiTracker():
         return client
 
     def get_client_display_name(self, client):
-        mac = client['mac']
+        mac = client['mac'].upper()
         hostname = client['hostname'] if 'hostname' in client else None
         return f"{hostname} ({mac})" if hostname is not None else mac
 
