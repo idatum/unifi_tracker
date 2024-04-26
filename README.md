@@ -67,6 +67,11 @@ Works fine generally, and allows me to more freely innovate and be less dependen
 
 History
 -
+### v0.1.1
+- Log handled vs raised exceptions differently.
+- Explicitly set callback_api_version.
+- Improve client hostname logging.
+- Consistent mac upper casing.
 ### v0.1.0
 - Functionality to group clients by AP hostname.
 - Optimization: filter client properties to save memory.
