@@ -67,6 +67,8 @@ Works fine generally, and allows me to more freely innovate and be less dependen
 
 History
 -
+### v0.1.2
+- Address issue [#2](https://github.com/idatum/unifi_tracker/issues/2)
 ### v0.1.1
 - Log handled vs raised exceptions differently.
 - Explicitly set callback_api_version.
