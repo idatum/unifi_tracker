@@ -10,6 +10,8 @@ https://github.com/home-assistant/core/tree/dev/homeassistant/components/unifi_d
 
 In short: I wanted another option to track WiFi clients, an MQTT option in which I have full control, seperate from HA components other than the MQTT service which I use extensively anyway.
 
+.NET version [here.](https://github.com/idatum/labtracker)
+
 Module
 -
 The Python module ```unifi_tracker``` has the functionality to query each AP using SSH by remotely executing a Unifi utility ```mca-dump```. Only SSH key auth is supported.
